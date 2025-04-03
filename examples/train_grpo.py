@@ -9,37 +9,28 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-def train_grpo(env, agent, num_epochs=50, steps_per_epoch=1000, eval_episodes=10):
+def train_grpo(env, agent, num_epochs=50, steps_per_epoch=1000, eval_episodes=10,
+               update_interval=1000):
     """Train the GRPO agent"""
     # Training metrics
     epoch_rewards = []
     eval_rewards = []
     
     for epoch in range(num_epochs):
-        states = []
-        actions = []
-        log_probs = []
-        rewards = []
-        dones = []
         episode_rewards = []
-        
-        state = env.reset()
         episode_reward = 0
+        state = env.reset()
         
-        # Collect trajectory
+        # Collect experience
         for step in range(steps_per_epoch):
             # Select action
-            action, log_prob = agent.select_action(state)
+            action = agent.select_action(state)
             
             # Take step in environment
             next_state, reward, done, info = env.step(action)
             
             # Store transition
-            states.append(state)
-            actions.append(action)
-            log_probs.append(log_prob)
-            rewards.append(reward)
-            dones.append(done)
+            agent.store_transition(state, action, reward, next_state, done)
             
             episode_reward += reward
             
@@ -49,9 +40,15 @@ def train_grpo(env, agent, num_epochs=50, steps_per_epoch=1000, eval_episodes=10
                 episode_reward = 0
             else:
                 state = next_state
-        
-        # Update agent
-        metrics = agent.update(states, actions, log_probs, rewards, dones)
+            
+            # Update policy
+            if (step + 1) % update_interval == 0:
+                metrics = agent.update()
+                if metrics:
+                    print(f"Step {step + 1}, Policy Loss: {metrics['policy_loss']:.4f}, "
+                          f"Q Loss: {metrics['q_loss']:.4f}, "
+                          f"Mean Reward: {metrics['mean_reward']:.4f}, "
+                          f"Mean Advantage: {metrics['mean_advantage']:.4f}")
         
         # Evaluate agent
         eval_reward = evaluate_agent(env, agent, eval_episodes)
@@ -63,8 +60,6 @@ def train_grpo(env, agent, num_epochs=50, steps_per_epoch=1000, eval_episodes=10
         # Print progress
         print(f"\nEpoch {epoch + 1}/{num_epochs}")
         print(f"Train Reward: {epoch_rewards[-1]:.2f}, Eval Reward: {eval_reward:.2f}")
-        print(f"Policy Loss: {metrics['policy_loss']:.4f}, Value Loss: {metrics['value_loss']:.4f}")
-        print(f"Entropy: {metrics['entropy']:.4f}, KL: {metrics['kl']:.4f}\n")
         
         # Save model periodically
         if (epoch + 1) % 10 == 0:
@@ -82,7 +77,7 @@ def evaluate_agent(env, agent, num_episodes):
         total_reward = 0
         
         while not done:
-            action, _ = agent.select_action(state)
+            action = agent.select_action(state)
             next_state, reward, done, _ = env.step(action)
             total_reward += reward
             state = next_state
@@ -142,11 +137,8 @@ def main():
         hidden_dim=128,
         lr=3e-4,
         gamma=0.99,
-        gae_lambda=0.95,
-        clip_ratio=0.2,
-        entropy_coef=0.01,
-        vf_coef=0.5,
-        max_grad_norm=0.5
+        reward_scale=1.0,
+        penalty_scale=0.5
     )
     
     # Train agent
@@ -155,7 +147,8 @@ def main():
         agent=agent,
         num_epochs=50,
         steps_per_epoch=1000,
-        eval_episodes=10
+        eval_episodes=10,
+        update_interval=1000
     )
     
     # Plot results
