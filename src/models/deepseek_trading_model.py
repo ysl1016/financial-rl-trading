@@ -5,10 +5,10 @@ from typing import Dict, List, Tuple, Optional, Union
 
 class DeepSeekTradingModel(nn.Module):
     """
-    DeepSeek-R1 기반 금융 트레이딩 모델
+    DeepSeek-R1 based financial trading model
     
-    트랜스포머 아키텍처를 사용하여 시계열 금융 데이터를 처리하고,
-    GRPO(Generalized Reward-Penalty Optimization) 알고리즘에 최적화된 구조입니다.
+    Uses transformer architecture to process time series financial data,
+    optimized for the GRPO (Generalized Reward-Penalty Optimization) algorithm.
     """
     
     def __init__(
@@ -26,16 +26,16 @@ class DeepSeekTradingModel(nn.Module):
     ):
         """
         Args:
-            input_dim: 입력 특성 차원
-            action_dim: 행동 공간 차원
-            hidden_dim: 히든 레이어 차원
-            num_layers: 트랜스포머 레이어 수
-            num_heads: 멀티헤드 어텐션 헤드 수
-            dropout: 드롭아웃 비율
-            max_seq_length: 최대 시퀀스 길이
-            use_gru_overlay: GRU 오버레이 사용 여부
-            use_feature_attention: 특성 어텐션 메커니즘 사용 여부
-            use_regime_detection: 시장 레짐 감지 메커니즘 사용 여부
+            input_dim: Input feature dimension
+            action_dim: Action space dimension
+            hidden_dim: Hidden layer dimension
+            num_layers: Number of transformer layers
+            num_heads: Number of multihead attention heads
+            dropout: Dropout rate
+            max_seq_length: Maximum sequence length
+            use_gru_overlay: Whether to use GRU overlay
+            use_feature_attention: Whether to use feature attention mechanism
+            use_regime_detection: Whether to use market regime detection mechanism
         """
         super(DeepSeekTradingModel, self).__init__()
         
@@ -49,17 +49,17 @@ class DeepSeekTradingModel(nn.Module):
         self.use_feature_attention = use_feature_attention
         self.use_regime_detection = use_regime_detection
         
-        # 임베딩 레이어
+        # Feature embedding
         self.feature_embedding = nn.Linear(input_dim, hidden_dim)
         
-        # 위치 인코딩 (시간적 정보 보존)
+        # Positional encoding (preserving temporal information)
         self.positional_encoding = PositionalEncoding(
             d_model=hidden_dim,
             dropout=dropout,
             max_len=max_seq_length
         )
         
-        # 트랜스포머 인코더
+        # Transformer encoder
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=hidden_dim,
             nhead=num_heads,
@@ -73,7 +73,7 @@ class DeepSeekTradingModel(nn.Module):
             num_layers=num_layers
         )
         
-        # GRU 오버레이 (시간적 의존성 강화)
+        # GRU overlay (enhancing temporal dependencies)
         if use_gru_overlay:
             self.gru = nn.GRU(
                 input_size=hidden_dim,
@@ -83,14 +83,14 @@ class DeepSeekTradingModel(nn.Module):
                 dropout=dropout if num_layers > 1 else 0
             )
         
-        # 특성 어텐션 메커니즘
+        # Feature attention mechanism
         if use_feature_attention:
             self.feature_attention = FeatureAttention(
                 feature_dim=hidden_dim,
-                num_heads=num_heads // 2  # 헤드 수 감소
+                num_heads=num_heads // 2  # Reduced number of heads
             )
         
-        # 시장 레짐 감지기
+        # Market regime detector
         if use_regime_detection:
             self.regime_detector = RegimeDetector(
                 input_dim=hidden_dim,
@@ -98,26 +98,26 @@ class DeepSeekTradingModel(nn.Module):
                 num_regimes=4
             )
         
-        # 정책 헤드 (행동 확률)
+        # Policy head (action probabilities)
         self.policy_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.GELU(),
             nn.Linear(hidden_dim, action_dim)
         )
         
-        # 가치 헤드 (상태 가치 추정)
+        # Value head (state value estimation)
         self.value_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.GELU(),
             nn.Linear(hidden_dim, 1)
         )
         
-        # 불확실성 헤드 (상태 가치의 분산 추정)
+        # Uncertainty head (state value variance estimation)
         self.uncertainty_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.GELU(),
             nn.Linear(hidden_dim, 1),
-            nn.Softplus()  # 항상 양수 보장
+            nn.Softplus()  # Ensures positive values
         )
     
     def forward(
@@ -127,44 +127,44 @@ class DeepSeekTradingModel(nn.Module):
     ) -> Dict[str, torch.Tensor]:
         """
         Args:
-            x: 입력 시계열 데이터 [batch_size, seq_length, input_dim]
-            mask: 어텐션 마스크 (선택 사항)
+            x: Input time series data [batch_size, seq_length, input_dim]
+            mask: Attention mask (optional)
             
         Returns:
-            dict: 모델 출력 (정책 로짓, 가치 추정, 불확실성 추정 등)
+            dict: Model outputs (policy logits, value estimation, uncertainty estimation, etc.)
         """
         batch_size, seq_length, _ = x.shape
         
-        # 특성 임베딩
+        # Feature embedding
         x = self.feature_embedding(x)  # [batch_size, seq_length, hidden_dim]
         
-        # 위치 인코딩 적용
+        # Apply positional encoding
         x = self.positional_encoding(x)  # [batch_size, seq_length, hidden_dim]
         
-        # 트랜스포머 인코더 통과
+        # Transformer encoder
         x_transformer = self.transformer_encoder(x, src_key_padding_mask=mask)
         
-        # GRU 오버레이 (선택적)
+        # GRU overlay (optional)
         if self.use_gru_overlay:
             x_gru, _ = self.gru(x_transformer)
-            x = x_gru + x_transformer  # 잔차 연결
+            x = x_gru + x_transformer  # Residual connection
         else:
             x = x_transformer
         
-        # 마지막 시퀀스 토큰 사용 (현재 상태)
+        # Use last sequence token (current state)
         x = x[:, -1, :]  # [batch_size, hidden_dim]
         
-        # 특성 어텐션 적용 (선택적)
+        # Apply feature attention (optional)
         attention_weights = None
         if self.use_feature_attention:
             x, attention_weights = self.feature_attention(x)
         
-        # 시장 레짐 감지 (선택적)
+        # Market regime detection (optional)
         regime_probs = None
         if self.use_regime_detection:
             regime_probs = self.regime_detector(x)
         
-        # 정책 및 가치 헤드
+        # Policy and value heads
         policy_logits = self.policy_head(x)
         value = self.value_head(x)
         uncertainty = self.uncertainty_head(x)
@@ -179,7 +179,7 @@ class DeepSeekTradingModel(nn.Module):
         }
     
     def get_action_probs(self, policy_logits: torch.Tensor) -> torch.Tensor:
-        """정책 로짓을 확률로 변환"""
+        """Convert policy logits to probabilities"""
         return F.softmax(policy_logits, dim=-1)
     
     def get_action(
@@ -188,20 +188,20 @@ class DeepSeekTradingModel(nn.Module):
         deterministic: bool = False,
         temperature: float = 1.0
     ) -> torch.Tensor:
-        """행동 선택 (확률적 또는 결정론적)"""
+        """Select action (probabilistic or deterministic)"""
         if deterministic:
             return torch.argmax(policy_logits, dim=-1)
         
-        # 온도 스케일링
+        # Temperature scaling
         scaled_logits = policy_logits / temperature
         action_probs = F.softmax(scaled_logits, dim=-1)
         action_dist = torch.distributions.Categorical(action_probs)
         
         return action_dist.sample()
 
-# 필요한 보조 모듈들
+# Required auxiliary modules
 class PositionalEncoding(nn.Module):
-    """트랜스포머를 위한 위치 인코딩"""
+    """Positional encoding for transformer"""
     
     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
         super(PositionalEncoding, self).__init__()
@@ -232,7 +232,7 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 class FeatureAttention(nn.Module):
-    """특성 간 중요도를 계산하는 어텐션 메커니즘"""
+    """Feature attention mechanism to compute importance between features"""
     
     def __init__(self, feature_dim: int, num_heads: int = 4):
         super(FeatureAttention, self).__init__()
@@ -256,26 +256,26 @@ class FeatureAttention(nn.Module):
             x: [batch_size, feature_dim]
             
         Returns:
-            weighted_features: 가중치가 적용된 특성
-            attention_weights: 특성별 중요도
+            weighted_features: Features with applied weights
+            attention_weights: Feature importance weights
         """
-        # 차원 확장 [batch_size, 1, feature_dim]
+        # Expand dimensions [batch_size, 1, feature_dim]
         x_expanded = x.unsqueeze(1)
         
-        # 셀프 어텐션
+        # Self-attention
         attn_output, _ = self.multihead_attn(x_expanded, x_expanded, x_expanded)
         attn_output = attn_output.squeeze(1)  # [batch_size, feature_dim]
         
-        # 특성 중요도 계산
+        # Calculate feature importance
         attention_weights = self.feature_importance(attn_output)
         
-        # 가중치 적용
+        # Apply weights
         weighted_features = x * attention_weights
         
         return weighted_features, attention_weights
 
 class RegimeDetector(nn.Module):
-    """시장 레짐(체제)을 감지하는 모듈"""
+    """Market regime (state) detector module"""
     
     def __init__(self, input_dim: int, hidden_dim: int, num_regimes: int = 4):
         super(RegimeDetector, self).__init__()
@@ -295,6 +295,6 @@ class RegimeDetector(nn.Module):
             x: [batch_size, feature_dim]
             
         Returns:
-            regime_probs: 각 레짐의 확률 [batch_size, num_regimes]
+            regime_probs: Probabilities for each regime [batch_size, num_regimes]
         """
         return self.detector(x)
