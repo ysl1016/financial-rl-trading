@@ -5,9 +5,9 @@ from typing import Dict, Optional, Tuple, List, Union
 
 class HybridTemporalBlock(nn.Module):
     """
-    트랜스포머와 LSTM/GRU를 결합한 하이브리드 시간적 블록
+    Hybrid temporal block combining transformer and LSTM/GRU
     
-    시계열 데이터에서 다양한 시간적 패턴을 효과적으로 포착하기 위한 설계
+    Designed to effectively capture various temporal patterns in financial time series data
     """
     
     def __init__(
@@ -24,15 +24,15 @@ class HybridTemporalBlock(nn.Module):
     ):
         """
         Args:
-            input_dim: 입력 특성 차원
-            hidden_dim: 히든 레이어 차원
-            num_heads: 트랜스포머 어텐션 헤드 수
-            dropout: 드롭아웃 비율
-            rnn_type: RNN 유형 ('lstm' 또는 'gru')
-            use_bidirectional: 양방향 RNN 사용 여부
-            transformer_first: 트랜스포머를 먼저 적용할지 여부
-            layer_norm_eps: 레이어 정규화 epsilon
-            use_gated_connection: 게이트된 스킵 연결 사용 여부
+            input_dim: Input feature dimension
+            hidden_dim: Hidden layer dimension
+            num_heads: Transformer attention heads
+            dropout: Dropout rate
+            rnn_type: RNN type ('lstm' or 'gru')
+            use_bidirectional: Whether to use bidirectional RNN
+            transformer_first: Whether to apply transformer first
+            layer_norm_eps: Layer normalization epsilon
+            use_gated_connection: Whether to use gated skip connection
         """
         super(HybridTemporalBlock, self).__init__()
         
@@ -41,7 +41,7 @@ class HybridTemporalBlock(nn.Module):
         self.transformer_first = transformer_first
         self.use_gated_connection = use_gated_connection
         
-        # 트랜스포머 레이어
+        # Transformer layer
         self.transformer_layer = nn.TransformerEncoderLayer(
             d_model=input_dim,
             nhead=num_heads,
@@ -53,7 +53,7 @@ class HybridTemporalBlock(nn.Module):
             layer_norm_eps=layer_norm_eps
         )
         
-        # RNN 레이어
+        # RNN layer
         num_directions = 2 if use_bidirectional else 1
         self.rnn_output_dim = hidden_dim * num_directions
         
@@ -64,7 +64,7 @@ class HybridTemporalBlock(nn.Module):
                 num_layers=1,
                 batch_first=True,
                 bidirectional=use_bidirectional,
-                dropout=0  # 단일 레이어라 드롭아웃 필요 없음
+                dropout=0  # No dropout for single layer
             )
         else:  # GRU
             self.rnn = nn.GRU(
@@ -73,24 +73,24 @@ class HybridTemporalBlock(nn.Module):
                 num_layers=1,
                 batch_first=True,
                 bidirectional=use_bidirectional,
-                dropout=0  # 단일 레이어라 드롭아웃 필요 없음
+                dropout=0  # No dropout for single layer
             )
         
-        # 출력 프로젝션 (RNN 출력 차원을 원래 차원으로 변환)
+        # Output projection (convert RNN output dimension to original dimension)
         self.output_projection = nn.Linear(self.rnn_output_dim, input_dim)
         
-        # 레이어 정규화
+        # Layer normalization
         self.norm1 = nn.LayerNorm(input_dim, eps=layer_norm_eps)
         self.norm2 = nn.LayerNorm(input_dim, eps=layer_norm_eps)
         
-        # 게이트된 연결 (학습 가능한 가중치로 두 출력을 결합)
+        # Gated connection (learnable weights to combine outputs)
         if use_gated_connection:
             self.gate = nn.Sequential(
                 nn.Linear(input_dim * 2, input_dim),
                 nn.Sigmoid()
             )
         
-        # 드롭아웃
+        # Dropout
         self.dropout = nn.Dropout(dropout)
     
     def forward(
@@ -101,16 +101,16 @@ class HybridTemporalBlock(nn.Module):
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """
         Args:
-            x: 입력 시퀀스 [batch_size, seq_length, input_dim]
-            transformer_mask: 트랜스포머 어텐션 마스크 (선택적)
-            rnn_hidden: RNN 초기 은닉 상태 (선택적)
+            x: Input sequence [batch_size, seq_length, input_dim]
+            transformer_mask: Transformer attention mask (optional)
+            rnn_hidden: RNN initial hidden state (optional)
             
         Returns:
-            output: 처리된 시퀀스 [batch_size, seq_length, input_dim]
-            hidden: RNN 최종 은닉 상태 (LSTM인 경우 (h, c) 튜플)
+            output: Processed sequence [batch_size, seq_length, input_dim]
+            hidden: RNN final hidden state (for LSTM, this is a (h, c) tuple)
         """
         if self.transformer_first:
-            # 트랜스포머 -> RNN 순서
+            # Transformer -> RNN order
             transformer_out = self.transformer_layer(x, src_mask=transformer_mask)
             transformer_out = self.norm1(transformer_out)
             
@@ -121,7 +121,7 @@ class HybridTemporalBlock(nn.Module):
             
             first_out, second_out = transformer_out, rnn_out
         else:
-            # RNN -> 트랜스포머 순서
+            # RNN -> Transformer order
             rnn_out, hidden = self.rnn(x, rnn_hidden)
             rnn_out = self.output_projection(rnn_out)
             rnn_out = self.dropout(rnn_out)
@@ -132,14 +132,14 @@ class HybridTemporalBlock(nn.Module):
             
             first_out, second_out = rnn_out, transformer_out
         
-        # 두 출력 결합
+        # Combine outputs
         if self.use_gated_connection:
-            # 게이트된 연결
+            # Gated connection
             gate_input = torch.cat([first_out, second_out], dim=-1)
             gate = self.gate(gate_input)
             output = gate * first_out + (1 - gate) * second_out
         else:
-            # 단순 잔차 연결 (residual connection)
+            # Simple residual connection
             output = first_out + second_out
         
         return output, hidden
@@ -147,9 +147,9 @@ class HybridTemporalBlock(nn.Module):
 
 class DeepSeekHybridModel(nn.Module):
     """
-    DeepSeek-R1 기반 하이브리드 금융 트레이딩 모델
+    DeepSeek-R1 based hybrid financial trading model
     
-    트랜스포머와 순환 신경망을 결합하여 다양한 시간적 패턴을 포착
+    Combines transformer and recurrent networks to capture diverse temporal patterns
     """
     
     def __init__(
@@ -167,16 +167,16 @@ class DeepSeekHybridModel(nn.Module):
     ):
         """
         Args:
-            input_dim: 입력 특성 차원
-            action_dim: 행동 공간 차원
-            hidden_dim: 히든 레이어 차원
-            num_hybrid_layers: 하이브리드 블록 수
-            num_heads: 트랜스포머 어텐션 헤드 수
-            dropout: 드롭아웃 비율
-            rnn_type: RNN 유형 ('lstm' 또는 'gru')
-            use_bidirectional: 양방향 RNN 사용 여부
-            max_seq_length: 최대 시퀀스 길이
-            use_temporal_fusion: 다중 시간 스케일 퓨전 사용 여부
+            input_dim: Input feature dimension
+            action_dim: Action space dimension
+            hidden_dim: Hidden layer dimension
+            num_hybrid_layers: Number of hybrid blocks
+            num_heads: Transformer attention heads
+            dropout: Dropout rate
+            rnn_type: RNN type ('lstm' or 'gru')
+            use_bidirectional: Whether to use bidirectional RNN
+            max_seq_length: Maximum sequence length
+            use_temporal_fusion: Whether to use multi-timescale fusion
         """
         super(DeepSeekHybridModel, self).__init__()
         
@@ -187,25 +187,25 @@ class DeepSeekHybridModel(nn.Module):
         self.max_seq_length = max_seq_length
         self.use_temporal_fusion = use_temporal_fusion
         
-        # 입력 임베딩
+        # Input embedding
         self.input_embedding = nn.Linear(input_dim, hidden_dim)
         
-        # 위치 인코딩
+        # Positional encoding
         self.positional_encoding = PositionalEncoding(
             d_model=hidden_dim,
             dropout=dropout,
             max_len=max_seq_length
         )
         
-        # 하이브리드 블록 스택
+        # Hybrid block stack
         self.hybrid_blocks = nn.ModuleList()
         for i in range(num_hybrid_layers):
-            # 레이어마다 번갈아가며 트랜스포머/RNN 우선 순서 변경
+            # Alternate transformer/RNN priority
             transformer_first = (i % 2 == 0)
             
             block = HybridTemporalBlock(
                 input_dim=hidden_dim,
-                hidden_dim=hidden_dim // 2,  # 양방향이면 실제로는 hidden_dim 크기
+                hidden_dim=hidden_dim // 2,  # Half dimension for bidirectional
                 num_heads=num_heads,
                 dropout=dropout,
                 rnn_type=rnn_type,
@@ -214,7 +214,7 @@ class DeepSeekHybridModel(nn.Module):
             )
             self.hybrid_blocks.append(block)
         
-        # 다중 시간 스케일 퓨전
+        # Multi-timescale fusion
         if use_temporal_fusion:
             self.temporal_fusion = TemporalFusionDecoder(
                 input_dim=hidden_dim,
@@ -223,25 +223,25 @@ class DeepSeekHybridModel(nn.Module):
                 dropout=dropout
             )
         
-        # 정책 헤드 (행동 확률)
+        # Policy head (action probabilities)
         self.policy_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.GELU(),
             nn.Linear(hidden_dim, action_dim)
         )
         
-        # 가치 헤드 (상태 가치 추정)
+        # Value head (state value estimation)
         self.value_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.GELU(),
             nn.Linear(hidden_dim, 1)
         )
         
-        # 초기화
+        # Initialize weights
         self._init_weights()
     
     def _init_weights(self):
-        """가중치 초기화"""
+        """Weight initialization"""
         for m in self.modules():
             if isinstance(m, nn.Linear):
                 nn.init.xavier_uniform_(m.weight)
@@ -255,43 +255,43 @@ class DeepSeekHybridModel(nn.Module):
     ) -> Dict[str, torch.Tensor]:
         """
         Args:
-            x: 입력 시계열 데이터 [batch_size, seq_length, input_dim]
-            mask: 어텐션 마스크 (선택 사항)
+            x: Input time series data [batch_size, seq_length, input_dim]
+            mask: Attention mask (optional)
             
         Returns:
-            dict: 모델 출력 (정책 로짓, 가치 추정 등)
+            dict: Model outputs (policy logits, value estimation, etc.)
         """
         batch_size, seq_length, _ = x.shape
         
-        # 입력 임베딩
+        # Input embedding
         x = self.input_embedding(x)  # [batch_size, seq_length, hidden_dim]
         
-        # 위치 인코딩 적용
+        # Apply positional encoding
         x = self.positional_encoding(x)  # [batch_size, seq_length, hidden_dim]
         
-        # 하이브리드 블록 통과
+        # Process through hybrid blocks
         hidden_states = None
         temporal_features = []
         
         for i, block in enumerate(self.hybrid_blocks):
-            # 중간 특성 저장 (다중 시간 스케일 퓨전용)
+            # Store intermediate features (for multi-timescale fusion)
             if i > 0:
                 temporal_features.append(x)
             
-            # 하이브리드 블록 통과
+            # Process through hybrid block
             x, hidden_states = block(x, transformer_mask=mask, rnn_hidden=hidden_states)
         
-        # 마지막 특성 추가
+        # Add final features
         temporal_features.append(x)
         
-        # 다중 시간 스케일 퓨전
+        # Multi-timescale fusion
         if self.use_temporal_fusion and len(temporal_features) > 1:
             x = self.temporal_fusion(temporal_features)
         
-        # 마지막 시퀀스 토큰 사용 (현재 상태)
+        # Use last sequence token (current state)
         x = x[:, -1, :]  # [batch_size, hidden_dim]
         
-        # 정책 및 가치 헤드
+        # Policy and value heads
         policy_logits = self.policy_head(x)
         value = self.value_head(x)
         
@@ -304,7 +304,7 @@ class DeepSeekHybridModel(nn.Module):
 
 class PositionalEncoding(nn.Module):
     """
-    트랜스포머를 위한 위치 인코딩
+    Positional encoding for transformer
     """
     
     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
@@ -332,9 +332,9 @@ class PositionalEncoding(nn.Module):
 
 class TemporalFusionDecoder(nn.Module):
     """
-    다중 시간 스케일 퓨전 디코더
+    Multi-timescale fusion decoder
     
-    다양한 레이어에서 포착된 시간적 패턴을 통합
+    Integrates temporal patterns captured at different layers
     """
     
     def __init__(
@@ -346,17 +346,17 @@ class TemporalFusionDecoder(nn.Module):
     ):
         """
         Args:
-            input_dim: 입력 특성 차원
-            hidden_dim: 히든 레이어 차원
-            num_heads: 크로스 어텐션 헤드 수
-            dropout: 드롭아웃 비율
+            input_dim: Input feature dimension
+            hidden_dim: Hidden layer dimension
+            num_heads: Cross-attention heads
+            dropout: Dropout rate
         """
         super(TemporalFusionDecoder, self).__init__()
         
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         
-        # 크로스 어텐션 층
+        # Cross-attention layer
         self.cross_attention = nn.MultiheadAttention(
             embed_dim=hidden_dim,
             num_heads=num_heads,
@@ -364,7 +364,7 @@ class TemporalFusionDecoder(nn.Module):
             batch_first=True
         )
         
-        # 게이트된 퓨전 네트워크
+        # Gated fusion network
         self.fusion_gate = nn.Sequential(
             nn.Linear(hidden_dim * 2, hidden_dim),
             nn.Sigmoid()
@@ -375,45 +375,45 @@ class TemporalFusionDecoder(nn.Module):
             nn.GELU()
         )
         
-        # 레이어 정규화
+        # Layer normalization
         self.norm1 = nn.LayerNorm(hidden_dim)
         self.norm2 = nn.LayerNorm(hidden_dim)
         
-        # 드롭아웃
+        # Dropout
         self.dropout = nn.Dropout(dropout)
     
     def forward(self, temporal_features: List[torch.Tensor]) -> torch.Tensor:
         """
         Args:
-            temporal_features: 다양한 레이어의 특성 리스트 [batch_size, seq_length, hidden_dim]
+            temporal_features: List of features from different layers [batch_size, seq_length, hidden_dim]
             
         Returns:
-            fused_features: 통합된 특성 [batch_size, seq_length, hidden_dim]
+            fused_features: Integrated features [batch_size, seq_length, hidden_dim]
         """
-        # 마지막 레이어 특성을 쿼리로 사용
+        # Use last layer features as query
         query = self.norm1(temporal_features[-1])
         batch_size, seq_length, _ = query.shape
         
-        # 이전 레이어 특성 스택을 키/값으로 사용
+        # Stack previous layer features as key/value
         past_features = torch.cat([f.unsqueeze(1) for f in temporal_features[:-1]], dim=1)
         past_features = self.norm1(past_features)
         
-        # 시간적 특성 스택 형태 변환: [batch_size, num_layers, seq_length, hidden_dim] -> [batch_size*seq_length, num_layers, hidden_dim]
+        # Reshape temporal feature stack: [batch_size, num_layers, seq_length, hidden_dim] -> [batch_size*seq_length, num_layers, hidden_dim]
         num_layers = past_features.size(1)
         past_features_reshaped = past_features.transpose(1, 2).reshape(batch_size * seq_length, num_layers, self.hidden_dim)
         query_reshaped = query.reshape(batch_size * seq_length, 1, self.hidden_dim)
         
-        # 크로스 어텐션으로 다양한 시간 스케일 정보 통합
+        # Cross-attention to integrate different timescale information
         context, _ = self.cross_attention(
             query=query_reshaped,
             key=past_features_reshaped,
             value=past_features_reshaped
         )
         
-        # 원래 형태로 복원: [batch_size*seq_length, 1, hidden_dim] -> [batch_size, seq_length, hidden_dim]
+        # Restore shape: [batch_size*seq_length, 1, hidden_dim] -> [batch_size, seq_length, hidden_dim]
         context = context.reshape(batch_size, seq_length, self.hidden_dim)
         
-        # 게이트된 퓨전
+        # Gated fusion
         combined = torch.cat([query, context], dim=-1)
         gate = self.fusion_gate(combined)
         transform = self.fusion_transform(combined)
@@ -421,7 +421,7 @@ class TemporalFusionDecoder(nn.Module):
         fused = gate * transform + (1 - gate) * query
         fused = self.dropout(fused)
         
-        # 잔차 연결 및 정규화
+        # Residual connection and normalization
         fused = self.norm2(fused + query)
         
         return fused
