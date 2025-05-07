@@ -7,9 +7,9 @@ from typing import Optional, Tuple
 
 class DeepSeekEncoderLayer(nn.Module):
     """
-    DeepSeek-R1 기반 트랜스포머 인코더 레이어
+    DeepSeek-R1 based transformer encoder layer
     
-    표준 트랜스포머 인코더 레이어를 확장하여 금융 시계열 데이터에 최적화된 구조
+    Extended standard transformer encoder layer optimized for financial time series data
     """
     
     def __init__(
@@ -27,16 +27,16 @@ class DeepSeekEncoderLayer(nn.Module):
     ):
         """
         Args:
-            d_model: 모델 차원
-            nhead: 멀티헤드 어텐션 헤드 수
-            dim_feedforward: 피드포워드 네트워크 내부 차원
-            dropout: 드롭아웃 비율
-            activation: 활성화 함수 ('relu', 'gelu')
-            norm_first: True면 Pre-LN, False면 Post-LN 구조
-            layer_norm_eps: 레이어 정규화 epsilon
-            use_rotary_embeddings: 로터리 위치 임베딩 사용 여부
-            use_gated_mlp: 게이트된 MLP 사용 여부
-            window_size: 로컬 어텐션 윈도우 크기 (None이면 글로벌 어텐션)
+            d_model: Model dimension
+            nhead: Number of attention heads
+            dim_feedforward: Feedforward network inner dimension
+            dropout: Dropout rate
+            activation: Activation function ('relu', 'gelu')
+            norm_first: True for Pre-LN, False for Post-LN
+            layer_norm_eps: Layer normalization epsilon
+            use_rotary_embeddings: Whether to use rotary positional embeddings
+            use_gated_mlp: Whether to use gated MLP
+            window_size: Local attention window size (None for global attention)
         """
         super(DeepSeekEncoderLayer, self).__init__()
         
@@ -44,7 +44,7 @@ class DeepSeekEncoderLayer(nn.Module):
         self.use_rotary_embeddings = use_rotary_embeddings
         self.window_size = window_size
         
-        # 자기 주의(Self-attention) 모듈
+        # Self-attention module
         if use_rotary_embeddings:
             self.self_attn = RotaryMultiheadAttention(
                 embed_dim=d_model,
@@ -59,7 +59,7 @@ class DeepSeekEncoderLayer(nn.Module):
                 batch_first=True
             )
         
-        # 피드포워드 네트워크
+        # Feedforward network
         if use_gated_mlp:
             self.feedforward = GatedMLP(
                 d_model=d_model,
@@ -76,11 +76,11 @@ class DeepSeekEncoderLayer(nn.Module):
                 nn.Dropout(dropout)
             )
         
-        # 정규화 레이어
+        # Normalization layers
         self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps)
         self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps)
         
-        # 드롭아웃
+        # Dropout
         self.dropout = nn.Dropout(dropout)
     
     def forward(
@@ -91,16 +91,16 @@ class DeepSeekEncoderLayer(nn.Module):
     ) -> torch.Tensor:
         """
         Args:
-            src: 입력 시퀀스 [batch_size, seq_length, d_model]
-            src_mask: 어텐션 마스크 (선택적)
-            src_key_padding_mask: 패딩 마스크 (선택적)
+            src: Input sequence [batch_size, seq_length, d_model]
+            src_mask: Attention mask (optional)
+            src_key_padding_mask: Padding mask (optional)
             
         Returns:
-            x: 처리된 시퀀스 [batch_size, seq_length, d_model]
+            x: Processed sequence [batch_size, seq_length, d_model]
         """
         x = src
         
-        # 로컬 어텐션 마스크 생성 (필요한 경우)
+        # Create local attention mask if needed
         if self.window_size is not None and src_mask is None:
             seq_length = src.size(1)
             local_mask = create_local_attention_mask(seq_length, self.window_size).to(src.device)
@@ -109,7 +109,7 @@ class DeepSeekEncoderLayer(nn.Module):
             else:
                 src_mask = local_mask
         
-        # Pre-LN 또는 Post-LN 구조에 따라 다른 처리
+        # Pre-LN or Post-LN structure
         if self.norm_first:
             # Pre-LN
             attn_output = self._sa_block(self.norm1(x), src_mask, src_key_padding_mask)
@@ -129,7 +129,7 @@ class DeepSeekEncoderLayer(nn.Module):
         attn_mask: Optional[torch.Tensor],
         key_padding_mask: Optional[torch.Tensor]
     ) -> torch.Tensor:
-        """자기 주의(Self-attention) 블록"""
+        """Self-attention block"""
         if self.use_rotary_embeddings:
             x = self.self_attn(x, attn_mask=attn_mask)
         else:
@@ -142,15 +142,15 @@ class DeepSeekEncoderLayer(nn.Module):
         return x
     
     def _ff_block(self, x: torch.Tensor) -> torch.Tensor:
-        """피드포워드 블록"""
+        """Feedforward block"""
         return self.feedforward(x)
 
 
 class DeepSeekTransformerEncoder(nn.Module):
     """
-    DeepSeek-R1 기반 트랜스포머 인코더
+    DeepSeek-R1 based transformer encoder
     
-    금융 시계열 데이터에 최적화된 복수의 인코더 레이어 스택
+    Multiple encoder layers stack optimized for financial time series data
     """
     
     def __init__(
@@ -171,29 +171,29 @@ class DeepSeekTransformerEncoder(nn.Module):
     ):
         """
         Args:
-            input_dim: 입력 특성 차원
-            d_model: 모델 차원
-            nhead: 멀티헤드 어텐션 헤드 수
-            num_layers: 인코더 레이어 수
-            dim_feedforward: 피드포워드 네트워크 내부 차원
-            dropout: 드롭아웃 비율
-            activation: 활성화 함수 ('relu', 'gelu')
-            norm_first: Pre-LN 또는 Post-LN 구조
-            layer_norm_eps: 레이어 정규화 epsilon
-            use_rotary_embeddings: 로터리 위치 임베딩 사용 여부
-            use_gated_mlp: 게이트된 MLP 사용 여부
-            use_different_window_sizes: 레이어별 다른 윈도우 크기 사용 여부
-            max_seq_length: 최대 시퀀스 길이
+            input_dim: Input feature dimension
+            d_model: Model dimension
+            nhead: Number of attention heads
+            num_layers: Number of encoder layers
+            dim_feedforward: Feedforward network inner dimension
+            dropout: Dropout rate
+            activation: Activation function ('relu', 'gelu')
+            norm_first: Pre-LN or Post-LN structure
+            layer_norm_eps: Layer normalization epsilon
+            use_rotary_embeddings: Whether to use rotary positional embeddings
+            use_gated_mlp: Whether to use gated MLP
+            use_different_window_sizes: Whether to use different window sizes per layer
+            max_seq_length: Maximum sequence length
         """
         super(DeepSeekTransformerEncoder, self).__init__()
         
         self.d_model = d_model
         self.max_seq_length = max_seq_length
         
-        # 입력 임베딩
+        # Input embedding
         self.input_embedding = nn.Linear(input_dim, d_model)
         
-        # 위치 인코딩
+        # Positional encoding
         if not use_rotary_embeddings:
             self.positional_encoding = PositionalEncoding(
                 d_model=d_model,
@@ -201,10 +201,10 @@ class DeepSeekTransformerEncoder(nn.Module):
                 max_len=max_seq_length
             )
         
-        # 인코더 레이어 스택
+        # Encoder layers stack
         self.layers = nn.ModuleList()
         for i in range(num_layers):
-            # 다양한 윈도우 크기를 사용하는 경우, 레이어마다 다른 윈도우 크기 설정
+            # Use different window sizes if specified
             if use_different_window_sizes:
                 window_size = None if i == num_layers - 1 else 2 ** (i + 2)  # 4, 8, 16, ..., None
             else:
@@ -224,14 +224,14 @@ class DeepSeekTransformerEncoder(nn.Module):
             )
             self.layers.append(layer)
         
-        # 최종 정규화 레이어
+        # Final normalization layer
         self.norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
         
-        # 초기화
+        # Initialize weights
         self._reset_parameters()
     
     def _reset_parameters(self):
-        """가중치 초기화"""
+        """Weight initialization"""
         for p in self.parameters():
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
@@ -244,25 +244,25 @@ class DeepSeekTransformerEncoder(nn.Module):
     ) -> torch.Tensor:
         """
         Args:
-            src: 입력 시퀀스 [batch_size, seq_length, input_dim]
-            mask: 어텐션 마스크 (선택적)
-            src_key_padding_mask: 패딩 마스크 (선택적)
+            src: Input sequence [batch_size, seq_length, input_dim]
+            mask: Attention mask (optional)
+            src_key_padding_mask: Padding mask (optional)
             
         Returns:
-            output: 인코딩된 시퀀스 [batch_size, seq_length, d_model]
+            output: Encoded sequence [batch_size, seq_length, d_model]
         """
-        # 입력 임베딩
+        # Input embedding
         x = self.input_embedding(src) * math.sqrt(self.d_model)
         
-        # 위치 인코딩 (로터리가 아닌 경우)
+        # Positional encoding (if not using rotary)
         if not hasattr(self.layers[0], 'use_rotary_embeddings') or not self.layers[0].use_rotary_embeddings:
             x = self.positional_encoding(x)
         
-        # 인코더 레이어 통과
+        # Process through encoder layers
         for layer in self.layers:
             x = layer(x, src_mask=mask, src_key_padding_mask=src_key_padding_mask)
         
-        # 최종 정규화
+        # Final normalization
         output = self.norm(x)
         
         return output
@@ -270,7 +270,7 @@ class DeepSeekTransformerEncoder(nn.Module):
 
 class PositionalEncoding(nn.Module):
     """
-    표준 사인-코사인 위치 인코딩
+    Standard sinusoidal positional encoding
     """
     
     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
@@ -298,7 +298,9 @@ class PositionalEncoding(nn.Module):
 
 class RotaryMultiheadAttention(nn.Module):
     """
-    로터리 위치 임베딩이 적용된 멀티헤드 어텐션
+    Multihead attention with rotary positional embeddings
+    
+    Reference: RoPE (Rotary Position Embedding) - Su et al., 2021
     """
     
     def __init__(self, embed_dim: int, num_heads: int, dropout: float = 0.0):
@@ -309,12 +311,12 @@ class RotaryMultiheadAttention(nn.Module):
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
         
-        # QKV 프로젝션
+        # QKV projections
         self.qkv_proj = nn.Linear(embed_dim, 3 * embed_dim)
         self.dropout = nn.Dropout(dropout)
         self.out_proj = nn.Linear(embed_dim, embed_dim)
         
-        # 로터리 위치 임베딩
+        # Rotary positional embeddings
         self.rotary_emb = RotaryEmbedding(self.head_dim)
     
     def forward(
@@ -324,30 +326,30 @@ class RotaryMultiheadAttention(nn.Module):
     ) -> torch.Tensor:
         """
         Args:
-            x: 입력 시퀀스 [batch_size, seq_length, embed_dim]
-            attn_mask: 어텐션 마스크 (선택적)
+            x: Input sequence [batch_size, seq_length, embed_dim]
+            attn_mask: Attention mask (optional)
             
         Returns:
-            output: 어텐션 출력 [batch_size, seq_length, embed_dim]
+            output: Attention output [batch_size, seq_length, embed_dim]
         """
         batch_size, seq_length, _ = x.shape
         
-        # QKV 계산
+        # Calculate QKV
         qkv = self.qkv_proj(x).reshape(batch_size, seq_length, 3, self.num_heads, self.head_dim)
         qkv = qkv.permute(2, 0, 3, 1, 4)  # [3, batch_size, num_heads, seq_length, head_dim]
         q, k, v = qkv[0], qkv[1], qkv[2]
         
-        # 로터리 위치 임베딩 적용
+        # Apply rotary positional embeddings
         q, k = self.rotary_emb(q, k, seq_length)
         
-        # 어텐션 계산
+        # Calculate attention
         output = scaled_dot_product_attention(
             q, k, v,
             attn_mask=attn_mask,
             dropout_p=self.dropout.p if self.training else 0.0
         )
         
-        # 출력 프로젝션
+        # Output projection
         output = output.transpose(1, 2).contiguous().view(batch_size, seq_length, self.embed_dim)
         output = self.out_proj(output)
         
@@ -356,9 +358,9 @@ class RotaryMultiheadAttention(nn.Module):
 
 class RotaryEmbedding(nn.Module):
     """
-    로터리 위치 임베딩
+    Rotary positional embeddings
     
-    참고: RoPE (Rotary Position Embedding) - Su et al., 2021
+    Reference: RoPE (Rotary Position Embedding) - Su et al., 2021
     """
     
     def __init__(self, dim: int, base: int = 10000):
@@ -376,23 +378,23 @@ class RotaryEmbedding(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
-            q: 쿼리 텐서 [batch_size, num_heads, seq_length, head_dim]
-            k: 키 텐서 [batch_size, num_heads, seq_length, head_dim]
-            seq_len: 시퀀스 길이
+            q: Query tensor [batch_size, num_heads, seq_length, head_dim]
+            k: Key tensor [batch_size, num_heads, seq_length, head_dim]
+            seq_len: Sequence length
             
         Returns:
-            q_rot: 로터리 임베딩이 적용된 쿼리
-            k_rot: 로터리 임베딩이 적용된 키
+            q_rot: Query with rotary embeddings applied
+            k_rot: Key with rotary embeddings applied
         """
         t = torch.arange(seq_len, device=q.device).type_as(self.inv_freq)
         freqs = torch.einsum('i,j->ij', t, self.inv_freq)
         emb = torch.cat((freqs, freqs), dim=-1)
         
-        # 차원 확장 [1, 1, seq_length, head_dim]
+        # Expand dimensions [1, 1, seq_length, head_dim]
         cos = emb.cos().unsqueeze(0).unsqueeze(0)
         sin = emb.sin().unsqueeze(0).unsqueeze(0)
         
-        # 로터리 변환 적용
+        # Apply rotary transformations
         q_rot = self._rotate_half(q)
         k_rot = self._rotate_half(k)
         
@@ -402,16 +404,16 @@ class RotaryEmbedding(nn.Module):
         return q, k
     
     def _rotate_half(self, x: torch.Tensor) -> torch.Tensor:
-        """텐서의 절반을 회전"""
+        """Rotate half of the tensor's dimensions"""
         x1, x2 = x[..., : self.dim // 2], x[..., self.dim // 2 :]
         return torch.cat((-x2, x1), dim=-1)
 
 
 class GatedMLP(nn.Module):
     """
-    게이트된 MLP (Gated Multi-Layer Perceptron)
+    Gated MLP (Gated Multi-Layer Perceptron)
     
-    참고: GLU (Gated Linear Unit) 변형 - Dauphin et al., 2017
+    Reference: GLU (Gated Linear Unit) variant - Dauphin et al., 2017
     """
     
     def __init__(
@@ -433,12 +435,12 @@ class GatedMLP(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: 입력 텐서 [batch_size, seq_length, d_model]
+            x: Input tensor [batch_size, seq_length, d_model]
             
         Returns:
-            output: 처리된 텐서 [batch_size, seq_length, d_model]
+            output: Processed tensor [batch_size, seq_length, d_model]
         """
-        # GLU 메커니즘
+        # GLU mechanism
         if callable(self.act_fn):
             gate_output = self.act_fn(self.gate_proj(x))
         else:
@@ -446,10 +448,10 @@ class GatedMLP(nn.Module):
             
         value_output = self.value_proj(x)
         
-        # 게이트 * 값
+        # Gate * Value
         intermediate_output = gate_output * value_output
         
-        # 출력 프로젝션
+        # Output projection
         output = self.output_proj(intermediate_output)
         output = self.dropout(output)
         
@@ -464,35 +466,35 @@ def scaled_dot_product_attention(
     dropout_p: float = 0.0
 ) -> torch.Tensor:
     """
-    스케일드 닷-프로덕트 어텐션 계산
+    Calculate scaled dot-product attention
     
     Args:
-        q: 쿼리 텐서 [batch_size, num_heads, seq_length, head_dim]
-        k: 키 텐서 [batch_size, num_heads, seq_length, head_dim]
-        v: 값 텐서 [batch_size, num_heads, seq_length, head_dim]
-        attn_mask: 어텐션 마스크 (선택적)
-        dropout_p: 드롭아웃 확률
+        q: Query tensor [batch_size, num_heads, seq_length, head_dim]
+        k: Key tensor [batch_size, num_heads, seq_length, head_dim]
+        v: Value tensor [batch_size, num_heads, seq_length, head_dim]
+        attn_mask: Attention mask (optional)
+        dropout_p: Dropout probability
         
     Returns:
-        output: 어텐션 출력 [batch_size, num_heads, seq_length, head_dim]
+        output: Attention output [batch_size, num_heads, seq_length, head_dim]
     """
     d_k = q.size(-1)
     
     # Q @ K^T / sqrt(d_k)
     attn_scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(d_k)
     
-    # 마스크 적용 (있는 경우)
+    # Apply mask if provided
     if attn_mask is not None:
         attn_scores = attn_scores.masked_fill(attn_mask == 0, -1e9)
     
-    # 소프트맥스
+    # Softmax
     attn_weights = F.softmax(attn_scores, dim=-1)
     
-    # 드롭아웃
+    # Apply dropout
     if dropout_p > 0.0:
         attn_weights = F.dropout(attn_weights, p=dropout_p)
     
-    # 가중치 * 값
+    # Weighted sum with values
     output = torch.matmul(attn_weights, v)
     
     return output
@@ -500,14 +502,14 @@ def scaled_dot_product_attention(
 
 def create_local_attention_mask(seq_length: int, window_size: int) -> torch.Tensor:
     """
-    로컬 어텐션을 위한 마스크 생성
+    Create mask for local attention
     
     Args:
-        seq_length: 시퀀스 길이
-        window_size: 어텐션 윈도우 크기
+        seq_length: Sequence length
+        window_size: Attention window size
         
     Returns:
-        mask: 로컬 어텐션 마스크 [seq_length, seq_length]
+        mask: Local attention mask [seq_length, seq_length]
     """
     mask = torch.zeros(seq_length, seq_length)
     
