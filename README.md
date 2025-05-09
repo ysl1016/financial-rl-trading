@@ -1,15 +1,18 @@
-# DeepSeek-R1 Based Financial Trading Reinforcement Learning Model
+# Financial RL Trading Model
 
-This project implements a reinforcement learning-based financial trading model utilizing the DeepSeek-R1 architecture. It integrates transformer-based time series processing with the GRPO (Generalized Reward-Penalty Optimization) algorithm to deliver superior trading performance.
+This repository contains a Reinforcement Learning based Financial Trading Model implemented in Python. The model uses various technical indicators and a custom gym environment to train an RL agent for trading decisions.
 
-## Key Features
+## Features
 
-* DeepSeek-R1 based transformer architecture
-* Positional encoding and attention mechanisms for time series data
-* Enhanced GRPO algorithm (KL divergence constraints, entropy regularization, etc.)
-* Distributional value network for uncertainty modeling
-* Market regime detection and adaptive parameter adjustment
-* Comprehensive backtesting framework and performance analysis tools
+* Custom OpenAI Gym environment for trading
+* Multiple technical indicators implementation
+* Risk management with stop-loss
+* Transaction costs and slippage simulation
+* Sharpe ratio based reward function
+* GRPO (Generalized Reward-Penalty Optimization) agent implementation
+* Comprehensive evaluation metrics
+* Advanced testing & optimization tools
+* Benchmarking framework for strategy comparison
 
 ## Installation
 
@@ -23,9 +26,11 @@ pip install -r requirements.txt
 financial-rl-trading/
 ├── src/
 │   ├── data/           # Data processing modules
-│   ├── models/         # Reinforcement learning models
-│   └── utils/          # Utility functions
+│   ├── models/         # Trading environment and RL agents
+│   ├── utils/          # Utility functions and analysis tools
+│   └── tests/          # Testing framework
 ├── examples/           # Example scripts
+├── TESTING_GUIDE.md    # Guide for testing and optimization
 └── requirements.txt
 ```
 
@@ -54,76 +59,132 @@ env = TradingEnv(
 )
 ```
 
-### Creating DeepSeek-R1 GRPO Agent
+### Creating and Training GRPO Agent
 
 ```python
-from src.models.deepseek_grpo_agent import DeepSeekGRPOAgent
+from src.models.grpo_agent import GRPOAgent
 
 # Create agent
-agent = DeepSeekGRPOAgent(
+agent = GRPOAgent(
     state_dim=env.observation_space.shape[0],
     action_dim=env.action_space.n,
-    seq_length=20,
-    hidden_dim=256
+    hidden_dim=128,
+    lr=3e-4
 )
+
+# Basic training loop
+for episode in range(100):
+    state = env.reset()
+    done = False
+    
+    while not done:
+        action = agent.select_action(state)
+        next_state, reward, done, info = env.step(action)
+        agent.store_transition(state, action, reward, next_state, done)
+        
+        # Update every 10 steps
+        if episode % 10 == 0:
+            agent.update()
+        
+        state = next_state
 ```
 
-### Training the Model
+### Using Pre-built Examples
+
+```bash
+# Basic example of environment usage
+python examples/trading_example.py
+
+# Training with GRPO
+python examples/train_grpo.py
+
+# Hyperparameter optimization and benchmarking
+python examples/optimize_and_benchmark.py --symbol SPY --optimize --train --benchmark
+```
+
+## GRPO Model Details
+
+The GRPO (Generalized Reward-Penalty Optimization) agent implements a policy optimization algorithm with the following features:
+
+* Actor-Critic architecture with shared network layers
+* Generalized Advantage Estimation (GAE)
+* Proximal Policy Optimization (PPO) clipping
+* Entropy regularization for exploration
+* Value function loss with coefficient
+* Gradient clipping for stability
+
+The model uses the following hyperparameters by default:
+* Learning rate: 3e-4
+* Discount factor (gamma): 0.99
+* GAE lambda: 0.95
+* PPO clip ratio: 0.2
+* Entropy coefficient: 0.01
+* Value function coefficient: 0.5
+* Max gradient norm: 0.5
+
+## Advanced Features
+
+### Testing and Optimization
+
+The project includes comprehensive testing and optimization tools:
+
+```bash
+# Run all tests
+python src/tests/run_tests.py --type all
+
+# Optimize hyperparameters
+python examples/optimize_and_benchmark.py --symbol SPY --optimize --n_iter 30
+
+# Benchmark against traditional strategies
+python examples/optimize_and_benchmark.py --symbol SPY --benchmark
+```
+
+For detailed information on testing and optimization, see [TESTING_GUIDE.md](TESTING_GUIDE.md).
+
+### Hyperparameter Optimization
+
+The project includes Bayesian Optimization for finding the best hyperparameters:
 
 ```python
-# Use examples/train_deepseek_grpo.py script
-python examples/train_deepseek_grpo.py --symbol SPY --start_date 2018-01-01 --end_date 2022-12-31
+from src.utils.hyperparameter_optimization import HyperparameterOptimizer
+
+optimizer = HyperparameterOptimizer(train_data, val_data)
+result = optimizer.optimize(n_iter=30)
 ```
 
-### Backtesting
+### Strategy Benchmarking
+
+Compare GRPO agent against traditional trading strategies:
 
 ```python
-# Use examples/backtest_deepseek_grpo.py script
-python examples/backtest_deepseek_grpo.py --model_path models/deepseek_grpo_model.pt --symbol SPY --start_date 2023-01-01
+from src.utils.benchmarking import StrategyBenchmark
+
+benchmark = StrategyBenchmark(test_data)
+benchmark.create_standard_strategies()  # Add Buy & Hold, MA Crossover, RSI, etc.
+benchmark.add_grpo_agent(agent, name="GRPO")
+results = benchmark.run_all_benchmarks()
+benchmark.plot_results()
 ```
 
-## DeepSeek-R1 GRPO Model Characteristics
+## Training Process
 
-### Transformer-Based Architecture
+The training process includes:
 
-- **Positional Encoding**: Preserves temporal information in time series data
-- **Multi-Head Attention**: Parallel processing of patterns across various time scales
-- **Feature Attention**: Models relationships between different technical indicators
+1. Data collection using the trading environment
+2. Advantage estimation using GAE
+3. Policy and value function updates
+4. Regular evaluation of agent performance
+5. Model checkpointing
+6. Performance visualization
 
-### Enhanced GRPO Algorithm
+## Performance Metrics
 
-- **Reward-Penalty Separation**: Differentiated learning for positive/negative advantages
-- **KL Divergence Constraints**: Improved policy update stability
-- **Entropy Regularization**: Optimization of exploration-exploitation balance
+The toolkit includes various performance metrics:
 
-### Market Adaptation Mechanisms
-
-- **Market Regime Detection**: Recognition of various market conditions
-- **Dynamic Parameter Adjustment**: Agent behavior adjustment based on market conditions
-- **Exploration Temperature Control**: Exploration level adjustment according to market uncertainty
-
-## Backtesting Framework
-
-### Key Features
-
-- **Testing in Various Market Conditions**: Normal markets, bull markets, bear markets, high volatility, etc.
-- **Market Shock Simulation**: Robustness testing in extreme market conditions
-- **Monte Carlo Simulation**: Probabilistic performance distribution analysis
-- **Benchmark Comparison**: Comparison with various strategies such as Buy-and-Hold
-
-### Performance Metrics
-
-- **Profitability Metrics**: Total return, annualized return, win rate, etc.
-- **Risk-Adjusted Metrics**: Sharpe ratio, Sortino ratio, Calmar ratio, etc.
-- **Risk Metrics**: Maximum drawdown, VaR, CVaR, etc.
-- **Statistical Significance Testing**: t-test, Wilcoxon test, etc.
-
-### Visualization Tools
-
-- **Portfolio Performance Visualization**: Cumulative returns, daily returns, drawdowns, etc.
-- **Return Distribution Analysis**: Histograms, QQ plots, box plots, etc.
-- **Rolling Metrics**: Rolling returns, volatility, Sharpe ratio, etc.
-- **Regime-Based Performance Analysis**: Performance comparison by market regime
+* **Profitability Metrics**: Total return, annualized return, win rate
+* **Risk-Adjusted Metrics**: Sharpe ratio, Sortino ratio, Calmar ratio
+* **Risk Metrics**: Maximum drawdown, volatility
+* **Statistical Significance Testing**: t-test with effect size calculation
 
 ## License
 
