@@ -1,0 +1,37 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alertmanager 설정
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# 규칙 파일 로드 및 검사 (선택적)
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# 메트릭 수집 대상 구성
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "trading-api"
+    scrape_interval: 10s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["trading-api:8000"]
+
+  - job_name: "streaming-processor"
+    scrape_interval: 10s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["streaming-processor:8000"]
+
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
