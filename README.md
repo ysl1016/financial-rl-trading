@@ -13,6 +13,7 @@ This repository contains a Reinforcement Learning based Financial Trading Model 
 * Comprehensive evaluation metrics
 * Advanced testing & optimization tools
 * Benchmarking framework for strategy comparison
+* DeepSeek-R1 transformer-based model integration
 
 ## Installation
 
@@ -30,9 +31,15 @@ financial-rl-trading/
 │   ├── utils/          # Utility functions and analysis tools
 │   └── tests/          # Testing framework
 ├── examples/           # Example scripts
+├── docs/               # Documentation
 ├── TESTING_GUIDE.md    # Guide for testing and optimization
 └── requirements.txt
 ```
+
+## Documentation
+
+* [API Documentation](docs/api_documentation.md) - Detailed API usage guide for all components
+* [Testing Guide](TESTING_GUIDE.md) - Guide for testing and optimization
 
 ## Basic Usage
 
@@ -87,6 +94,23 @@ for episode in range(100):
             agent.update()
         
         state = next_state
+```
+
+### Using DeepSeek-R1 GRPO Agent
+
+```python
+from src.models.deepseek_grpo_agent import DeepSeekGRPOAgent
+
+# Create DeepSeek-R1 based GRPO agent
+agent = DeepSeekGRPOAgent(
+    state_dim=env.observation_space.shape[0],
+    action_dim=env.action_space.n,
+    seq_length=30,  # For temporal context
+    hidden_dim=256,
+    lr=3e-4
+)
+
+# See API documentation for full usage details
 ```
 
 ### Using Pre-built Examples
