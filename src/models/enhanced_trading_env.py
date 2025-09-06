@@ -375,7 +375,7 @@ class EnhancedTradingEnv(gym.Env):
                 self.trades.append(('buy', self.index, exec_price, self.holdings))
                 self.position_duration = 0
                 self.transaction_count += 1
-                
+
             elif self.position == -1:  # 숏 -> 롱
                 # 숏 포지션 청산
                 profit = (self.entry_price - exec_price) * abs(self.holdings)
@@ -383,17 +383,22 @@ class EnhancedTradingEnv(gym.Env):
                 self.cash -= abs(self.holdings) * exec_price * self.trading_cost
                 self.trades.append(('close_short', self.index, exec_price, abs(self.holdings)))
                 self.transaction_count += 1
-                
-                # 롱 포지션 진입
-                self.position = 1
-                self.holdings = size
-                cost = exec_price * self.holdings
-                self.cash -= cost * (1 + self.trading_cost)
-                self.entry_price = exec_price
-                self.trades.append(('buy', self.index, exec_price, self.holdings))
-                self.position_duration = 0
-                self.transaction_count += 1
-        
+
+                if not stop_loss_triggered:
+                    # 롱 포지션 진입
+                    self.position = 1
+                    self.holdings = size
+                    cost = exec_price * self.holdings
+                    self.cash -= cost * (1 + self.trading_cost)
+                    self.entry_price = exec_price
+                    self.trades.append(('buy', self.index, exec_price, self.holdings))
+                    self.position_duration = 0
+                    self.transaction_count += 1
+                else:
+                    # 스톱로스인 경우 포지션만 청산
+                    self.position = 0
+                    self.holdings = 0
+
         elif action_type == 2:  # 매도
             if self.position == 0:  # 무포지션 -> 숏
                 self.position = -1
@@ -404,7 +409,7 @@ class EnhancedTradingEnv(gym.Env):
                 self.trades.append(('short', self.index, exec_price, abs(self.holdings)))
                 self.position_duration = 0
                 self.transaction_count += 1
-                
+
             elif self.position == 1:  # 롱 -> 숏
                 # 롱 포지션 청산
                 profit = (exec_price - self.entry_price) * self.holdings
@@ -412,16 +417,21 @@ class EnhancedTradingEnv(gym.Env):
                 self.cash += (self.holdings * exec_price) * (1 - self.trading_cost)
                 self.trades.append(('close_long', self.index, exec_price, self.holdings))
                 self.transaction_count += 1
-                
-                # 숏 포지션 진입
-                self.position = -1
-                self.holdings = -size
-                proceed = exec_price * abs(self.holdings)
-                self.cash += proceed * (1 - self.trading_cost)
-                self.entry_price = exec_price
-                self.trades.append(('short', self.index, exec_price, abs(self.holdings)))
-                self.position_duration = 0
-                self.transaction_count += 1
+
+                if not stop_loss_triggered:
+                    # 숏 포지션 진입
+                    self.position = -1
+                    self.holdings = -size
+                    proceed = exec_price * abs(self.holdings)
+                    self.cash += proceed * (1 - self.trading_cost)
+                    self.entry_price = exec_price
+                    self.trades.append(('short', self.index, exec_price, abs(self.holdings)))
+                    self.position_duration = 0
+                    self.transaction_count += 1
+                else:
+                    # 스톱로스인 경우 포지션만 청산
+                    self.position = 0
+                    self.holdings = 0
         
         # 시간 진행
         self.index += 1
@@ -429,8 +439,8 @@ class EnhancedTradingEnv(gym.Env):
             # 데이터 끝에 도달
             return self._get_observation(), 0, True, {"message": "데이터 끝에 도달했습니다."}
         
-        # 포지션 유지 기간 업데이트
-        if self.position != 0:
+        # 포지션 유지 기간 업데이트 (새 포지션에서는 증가하지 않음)
+        if self.position != 0 and self.position == old_position:
             self.position_duration += 1
         
         # 새 포트폴리오 가치 계산
