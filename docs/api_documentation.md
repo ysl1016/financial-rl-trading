@@ -41,11 +41,13 @@ The model consists of the following main modules:
 ```python
 from src.data.data_processor import download_stock_data, process_data
 
-# Download single asset data
-data = download_stock_data(symbol="SPY", start_date="2020-01-01", end_date="2022-12-31")
-
-# Process data and calculate technical indicators
-processed_data = process_data(symbol="SPY", start_date="2020-01-01", end_date="2022-12-31")
+try:
+    # Download single asset data
+    data = download_stock_data(symbol="SPY", start_date="2020-01-01", end_date="2022-12-31")
+    # Process data and calculate technical indicators
+    processed_data = process_data(symbol="SPY", start_date="2020-01-01", end_date="2022-12-31")
+except ValueError as e:
+    print(f"Data preparation failed: {e}")
 ```
 
 #### Key Parameters
@@ -56,8 +58,8 @@ processed_data = process_data(symbol="SPY", start_date="2020-01-01", end_date="2
 
 #### Return Values
 
-- `download_stock_data`: pandas DataFrame with OHLCV data
-- `process_data`: processed pandas DataFrame with added technical indicators
+- `download_stock_data`: pandas DataFrame with OHLCV data. Raises `ValueError` if the data cannot be retrieved or is invalid.
+- `process_data`: processed pandas DataFrame with added technical indicators. Propagates `ValueError` from `download_stock_data`.
 
 ### 3.2 Multi-Asset Data Processing
 
