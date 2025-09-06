@@ -52,7 +52,11 @@ def process_data(symbol, start_date=None, end_date=None,
             Defaults to 0.15. The remainder is used for testing.
 
     Returns:
-        pd.DataFrame: Processed DataFrame with technical indicators
+        dict: Dictionary with keys 'train', 'val', 'test', and 'stats'.
+            'train', 'val', and 'test' are NaN-free DataFrames with
+            integer indices (after final dropna and reset_index), and
+            'stats' contains normalization statistics used for indicator
+            normalization across splits.
 
     Raises:
         ValueError: Propagated from download_stock_data when data download fails.
