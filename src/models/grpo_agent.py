@@ -135,9 +135,11 @@ class GRPOAgent:
         log_probs = dist.log_prob(actions)
         reward_loss = -log_probs[positive_mask] * advantages[positive_mask] * self.reward_scale
         penalty_loss = log_probs[negative_mask] * advantages[negative_mask].abs() * self.penalty_scale
-        
-        policy_loss = (reward_loss.mean() + penalty_loss.mean()) if len(reward_loss) > 0 and len(penalty_loss) > 0 \
-                     else (reward_loss.mean() if len(reward_loss) > 0 else penalty_loss.mean())
+
+        reward_mean = reward_loss.mean() if reward_loss.numel() > 0 else torch.tensor(0.0, device=self.device)
+        penalty_mean = penalty_loss.mean() if penalty_loss.numel() > 0 else torch.tensor(0.0, device=self.device)
+
+        policy_loss = reward_mean + penalty_mean
         
         # Q-value estimation loss
         q_loss = (current_q - target_q).pow(2).mean()
@@ -176,3 +178,4 @@ class GRPOAgent:
         checkpoint = torch.load(path)
         self.network.load_state_dict(checkpoint['network_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+

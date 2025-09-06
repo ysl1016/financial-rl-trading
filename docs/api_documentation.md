@@ -344,7 +344,7 @@ from src.data.data_processor import process_data
 from src.models.trading_env import TradingEnv
 from src.models.grpo_agent import GRPOAgent
 
-# Process data
+# Process data (missing values removed and index reset)
 data = process_data('SPY', start_date='2020-01-01', end_date='2022-01-01')
 
 # Split train/test data
