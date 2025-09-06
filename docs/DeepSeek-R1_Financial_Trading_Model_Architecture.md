@@ -1097,15 +1097,16 @@ The data processing pipeline is responsible for collecting, preprocessing, and c
 def process_data(symbol, start_date=None, end_date=None,
                  train_ratio=0.7, val_ratio=0.15):
     """
-    Download and process single asset data and return train/validation/test
-    splits normalised using training statistics.
+    Download stock data, compute technical indicators, and return a processed
+    DataFrame. The `train_ratio` and `val_ratio` parameters are deprecated and
+    ignored, retained only for backward compatibility.
     """
     # Download data
     data = download_stock_data(symbol, start_date, end_date)
-    
+
     # Calculate technical indicators
     indicators = calculate_technical_indicators(data)
-    
+
     # Merge data and remove rows with missing values
     processed_data = pd.concat([data, indicators], axis=1).dropna()
     # Keep DatetimeIndex to preserve date alignment across assets

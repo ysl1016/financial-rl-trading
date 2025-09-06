@@ -114,8 +114,7 @@ def main():
     np.random.seed(42)
     
     # Download and process data
-    data_splits = process_data('SPY', start_date='2020-01-01')
-    data = data_splits['train']
+    data = process_data('SPY', start_date='2020-01-01')
     
     # Create environment
     env = TradingEnv(
