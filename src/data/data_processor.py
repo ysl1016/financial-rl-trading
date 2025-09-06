@@ -38,21 +38,23 @@ def download_stock_data(symbol, start_date=None, end_date=None):
 def process_data(symbol, start_date=None, end_date=None,
                  train_ratio=0.7, val_ratio=0.15):
     """
-    Download stock data, calculate technical indicators, and split into
-    train/validation/test sets. Normalization statistics are computed from
-    the training period and reused for validation and test periods.
+    Download stock data and compute technical indicators.
+
+    Note:
+        This function no longer splits the dataset into train/validation/test
+        sets. It returns a single processed DataFrame. The parameters
+        `train_ratio` and `val_ratio` are deprecated and ignored, retained
+        only for backward compatibility.
 
     Args:
         symbol (str): Stock symbol
         start_date (str, optional): Start date in YYYY-MM-DD format
         end_date (str, optional): End date in YYYY-MM-DD format
-        train_ratio (float, optional): Proportion of data used for training.
-            Defaults to 0.7.
-        val_ratio (float, optional): Proportion of data used for validation.
-            Defaults to 0.15. The remainder is used for testing.
+        train_ratio (float, optional): Deprecated. Ignored.
+        val_ratio (float, optional): Deprecated. Ignored.
 
     Returns:
-        pd.DataFrame: Processed DataFrame with technical indicators
+        pd.DataFrame: Processed DataFrame with technical indicators.
 
     Raises:
         ValueError: Propagated from download_stock_data when data download fails.
