@@ -38,13 +38,14 @@ def download_stock_data(symbol, start_date=None, end_date=None):
 def process_data(symbol, start_date=None, end_date=None,
                  train_ratio=0.7, val_ratio=0.15):
     """
-    Download stock data and compute technical indicators.
+    Download stock data, compute technical indicators, and return a processed
+    DataFrame.
 
     Note:
         This function no longer splits the dataset into train/validation/test
         sets. It returns a single processed DataFrame. The parameters
-        `train_ratio` and `val_ratio` are deprecated and ignored, retained
-        only for backward compatibility.
+        `train_ratio` and `val_ratio` are retained only for backward
+        compatibility and are ignored.
 
     Args:
         symbol (str): Stock symbol
@@ -54,11 +55,8 @@ def process_data(symbol, start_date=None, end_date=None,
         val_ratio (float, optional): Deprecated. Ignored.
 
     Returns:
-        dict: Dictionary with keys 'train', 'val', 'test', and 'stats'.
-            'train', 'val', and 'test' are NaN-free DataFrames with
-            integer indices (after final dropna and reset_index), and
-            'stats' contains normalization statistics used for indicator
-            normalization across splits.
+        pd.DataFrame: DataFrame containing price data and calculated
+            technical indicators with rows containing missing values removed.
 
     Raises:
         ValueError: Propagated from download_stock_data when data download fails.

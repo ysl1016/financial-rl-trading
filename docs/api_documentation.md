@@ -344,10 +344,11 @@ from src.data.data_processor import process_data
 from src.models.trading_env import TradingEnv
 from src.models.grpo_agent import GRPOAgent
 
-# Process data
-splits = process_data('SPY', start_date='2020-01-01', end_date='2022-01-01')
-train_data = splits['train']
-test_data = splits['test']
+# Process data and create train/test split
+data = process_data('SPY', start_date='2020-01-01', end_date='2022-01-01')
+split_idx = int(len(data) * 0.8)
+train_data = data.iloc[:split_idx]
+test_data = data.iloc[split_idx:]
 
 # Create environment
 env = TradingEnv(

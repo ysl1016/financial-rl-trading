@@ -39,8 +39,7 @@ def main(args):
     
     # 주식 데이터 다운로드 및 처리
     print(f"\n데이터 다운로드 및 처리 중... 심볼: {args.symbol}")
-    data_splits = process_data(args.symbol, start_date=args.start_date, end_date=args.end_date)
-    data = pd.concat([data_splits['train'], data_splits['val'], data_splits['test']])
+    data = process_data(args.symbol, start_date=args.start_date, end_date=args.end_date)
     print(f"처리된 데이터 크기: {len(data)} 행")
 
     
