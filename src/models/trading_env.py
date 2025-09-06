@@ -98,6 +98,7 @@ class TradingEnv(gym.Env):
         """Execute one step in the environment"""
         # Get current price and portfolio value
         current_price = float(self.data.loc[self.index, 'Close'])
+        next_price = float(self.data.loc[self.index + 1, 'Close']) if self.index < self.n_steps - 1 else current_price
         old_portfolio_value = self.cash + (self.holdings * current_price)
         
         # Check stop loss
@@ -166,16 +167,19 @@ class TradingEnv(gym.Env):
         self.index += 1
         if self.position != 0:
             self.position_duration += 1
-        
+
+        # Determine price for portfolio valuation
+        valuation_price = next_price if self.index < self.n_steps else exec_price
+
         # Calculate new portfolio value and return
-        new_portfolio_value = self.cash + (self.holdings * current_price)
+        new_portfolio_value = self.cash + (self.holdings * valuation_price)
         self.portfolio_values.append(new_portfolio_value)
         daily_return = (new_portfolio_value / old_portfolio_value) - 1
         self.daily_returns.append(daily_return)
-        
+
         # Calculate reward
         reward = self._calculate_reward(old_portfolio_value, new_portfolio_value, action)
-        
+
         # Check if episode is done
         done = self.index >= self.n_steps - 1
         
