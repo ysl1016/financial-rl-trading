@@ -59,15 +59,28 @@ def process_data(symbol, start_date=None, end_date=None,
     """
     # Download data
     data = download_stock_data(symbol, start_date, end_date)
-    
-    # Calculate technical indicators
-    indicators = calculate_technical_indicators(data)
-    
-    # Merge data with indicators
-    processed_data = pd.concat([data, indicators], axis=1)
-    
-    # Clean data: remove NaNs introduced by indicators and ensure sequential index
-    processed_data.dropna(inplace=True)
-    processed_data.reset_index(inplace=True)
-    
-    return processed_data
+
+    n = len(data)
+    train_end = int(n * train_ratio)
+    val_end = train_end + int(n * val_ratio)
+
+    train_data = data.iloc[:train_end]
+    val_data = data.iloc[train_end:val_end]
+    test_data = data.iloc[val_end:]
+
+    # Calculate technical indicators using training statistics
+    train_indicators, stats = calculate_technical_indicators(
+        train_data, return_stats=True)
+    val_indicators = calculate_technical_indicators(val_data, stats)
+    test_indicators = calculate_technical_indicators(test_data, stats)
+
+    train_processed = pd.concat([train_data, train_indicators], axis=1).dropna().reset_index(drop=True)
+    val_processed = pd.concat([val_data, val_indicators], axis=1).dropna().reset_index(drop=True)
+    test_processed = pd.concat([test_data, test_indicators], axis=1).dropna().reset_index(drop=True)
+
+    return {
+        'train': train_processed,
+        'val': val_processed,
+        'test': test_processed,
+        'stats': stats,
+    }
