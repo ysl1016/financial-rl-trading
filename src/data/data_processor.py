@@ -1,6 +1,9 @@
+import logging
 import yfinance as yf
 import pandas as pd
 from ..utils.indicators import calculate_technical_indicators
+
+logger = logging.getLogger(__name__)
 
 def download_stock_data(symbol, start_date=None, end_date=None):
     """
@@ -13,11 +16,23 @@ def download_stock_data(symbol, start_date=None, end_date=None):
         
     Returns:
         pd.DataFrame: DataFrame with OHLCV data
+
+    Raises:
+        ValueError: If the data cannot be downloaded or is invalid.
     """
-    print(f"{symbol} 데이터 다운로드 중...")
-    stock = yf.Ticker(symbol)
-    data = stock.history(start=start_date, end=end_date)
-    print(f"다운로드 완료: {len(data)} 데이터 포인트\n")
+    try:
+        logger.info("%s 데이터 다운로드 중...", symbol)
+        stock = yf.Ticker(symbol)
+        data = stock.history(start=start_date, end=end_date)
+    except Exception as e:
+        logger.error("yfinance 호출 실패: %s", e)
+        raise ValueError(f"Failed to download data for {symbol}") from e
+
+    required_cols = {"Open", "High", "Low", "Close", "Volume"}
+    if data.empty or not required_cols.issubset(data.columns):
+        raise ValueError("Downloaded data is empty or missing required columns")
+
+    logger.info("다운로드 완료: %d 데이터 포인트", len(data))
     return data
 
 def process_data(symbol, start_date=None, end_date=None,
@@ -37,35 +52,22 @@ def process_data(symbol, start_date=None, end_date=None,
             Defaults to 0.15. The remainder is used for testing.
 
     Returns:
-        dict: Dictionary with keys ``'train'``, ``'val'``, ``'test'`` containing
-        processed ``pd.DataFrame`` objects. The dictionary also includes a
-        ``'stats'`` key with the normalization statistics from the training
-        set.
+        pd.DataFrame: Processed DataFrame with technical indicators
+
+    Raises:
+        ValueError: Propagated from download_stock_data when data download fails.
     """
     # Download data
     data = download_stock_data(symbol, start_date, end_date)
-
-    n = len(data)
-    train_end = int(n * train_ratio)
-    val_end = train_end + int(n * val_ratio)
-
-    train_data = data.iloc[:train_end]
-    val_data = data.iloc[train_end:val_end]
-    test_data = data.iloc[val_end:]
-
-    # Calculate technical indicators using training statistics
-    train_indicators, stats = calculate_technical_indicators(
-        train_data, return_stats=True)
-    val_indicators = calculate_technical_indicators(val_data, stats)
-    test_indicators = calculate_technical_indicators(test_data, stats)
-
-    train_processed = pd.concat([train_data, train_indicators], axis=1)
-    val_processed = pd.concat([val_data, val_indicators], axis=1)
-    test_processed = pd.concat([test_data, test_indicators], axis=1)
-
-    return {
-        'train': train_processed,
-        'val': val_processed,
-        'test': test_processed,
-        'stats': stats,
-    }
+    
+    # Calculate technical indicators
+    indicators = calculate_technical_indicators(data)
+    
+    # Merge data with indicators
+    processed_data = pd.concat([data, indicators], axis=1)
+    
+    # Clean data: remove NaNs introduced by indicators and ensure sequential index
+    processed_data.dropna(inplace=True)
+    processed_data.reset_index(inplace=True)
+    
+    return processed_data
