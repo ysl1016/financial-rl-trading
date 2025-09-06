@@ -2,6 +2,7 @@ import os
 import logging
 import uvicorn
 import numpy as np
+import torch
 from typing import Dict, Any, List, Optional, Union
 from pathlib import Path
 from fastapi import FastAPI, Request, Depends, HTTPException, status
@@ -268,7 +269,7 @@ def create_app(model_path: str, optimization_level: str = "medium") -> FastAPI:
             state[-1] = portfolio_return
             
             # 모델 추론
-            action = model_instance.select_action(state, deterministic=True)
+            action = model_instance.select_action(state)
             
             # 행동 확률 계산 (추가 정보용)
             with torch.no_grad():
@@ -327,7 +328,7 @@ def create_app(model_path: str, optimization_level: str = "medium") -> FastAPI:
                 state[-2] = current_position
                 state[-1] = portfolio_return
                 
-                action = model_instance.select_action(state, deterministic=True)
+                action = model_instance.select_action(state)
                 
                 with torch.no_grad():
                     state_tensor = torch.FloatTensor(state).unsqueeze(0).to(model_instance.device)
@@ -364,12 +365,10 @@ def create_app(model_path: str, optimization_level: str = "medium") -> FastAPI:
     
     return app
 
-def run_app(model_path: str, host: str = "0.0.0.0", port: int = 8000, 
+def run_app(model_path: str, host: str = "0.0.0.0", port: int = 8000,
            optimization_level: str = "medium", reload: bool = False):
     """API 서버 실행"""
-    import torch
-    global import torch
-    
+
     app = create_app(model_path, optimization_level)
     
     logger.info(f"API 서버 시작 (host={host}, port={port})")
