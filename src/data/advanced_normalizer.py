@@ -1,8 +1,11 @@
+import os
+import pickle
+from typing import Dict, List, Tuple, Optional, Union
+
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-from typing import Dict, List, Tuple, Optional, Union
 
 
 class AdaptiveFeatureNormalizer:
@@ -413,7 +416,6 @@ class AdaptiveFeatureNormalizer:
         Args:
             path: 저장 경로
         """
-        import pickle
         with open(path, 'wb') as f:
             pickle.dump({
                 'feature_groups': self.feature_groups,
@@ -436,7 +438,6 @@ class AdaptiveFeatureNormalizer:
         Returns:
             normalizer: 로드된 정규화기
         """
-        import pickle
         with open(path, 'rb') as f:
             data = pickle.load(f)
         
@@ -628,12 +629,9 @@ class MultiResolutionNormalizer:
         Args:
             path: 저장 경로
         """
-        import pickle
-        import os
-        
         # 디렉토리 생성
         os.makedirs(path, exist_ok=True)
-        
+
         # 메타 정보 저장
         meta_path = os.path.join(path, 'meta.pkl')
         with open(meta_path, 'wb') as f:
@@ -659,9 +657,6 @@ class MultiResolutionNormalizer:
         Returns:
             normalizer: 로드된 정규화기
         """
-        import pickle
-        import os
-        
         # 메타 정보 로드
         meta_path = os.path.join(path, 'meta.pkl')
         with open(meta_path, 'rb') as f:
