@@ -8,8 +8,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def main():
-    # Download and process data
+    # Download and process data (missing values are dropped and index reset)
     data = process_data('SPY', start_date='2020-01-01')
+    print(data.head())
     
     # Create environment
     env = TradingEnv(

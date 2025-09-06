@@ -38,7 +38,10 @@ def process_data(symbol, start_date=None, end_date=None):
     # Calculate technical indicators
     indicators = calculate_technical_indicators(data)
     
-    # Merge data with indicators
-    processed_data = pd.concat([data, indicators], axis=1)
-    
+    # Merge data with indicators and remove rows with missing values
+    processed_data = pd.concat([data, indicators], axis=1).dropna()
+
+    # Reset index to maintain sequential ordering after dropping NaNs
+    processed_data.reset_index(inplace=True)
+
     return processed_data
