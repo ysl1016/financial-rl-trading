@@ -20,28 +20,52 @@ def download_stock_data(symbol, start_date=None, end_date=None):
     print(f"다운로드 완료: {len(data)} 데이터 포인트\n")
     return data
 
-def process_data(symbol, start_date=None, end_date=None):
+def process_data(symbol, start_date=None, end_date=None,
+                 train_ratio=0.7, val_ratio=0.15):
     """
-    Download and process stock data
-    
+    Download stock data, calculate technical indicators, and split into
+    train/validation/test sets. Normalization statistics are computed from
+    the training period and reused for validation and test periods.
+
     Args:
         symbol (str): Stock symbol
         start_date (str, optional): Start date in YYYY-MM-DD format
         end_date (str, optional): End date in YYYY-MM-DD format
-        
+        train_ratio (float, optional): Proportion of data used for training.
+            Defaults to 0.7.
+        val_ratio (float, optional): Proportion of data used for validation.
+            Defaults to 0.15. The remainder is used for testing.
+
     Returns:
-        pd.DataFrame: Processed DataFrame with technical indicators
+        dict: Dictionary with keys ``'train'``, ``'val'``, ``'test'`` containing
+        processed ``pd.DataFrame`` objects. The dictionary also includes a
+        ``'stats'`` key with the normalization statistics from the training
+        set.
     """
     # Download data
     data = download_stock_data(symbol, start_date, end_date)
-    
-    # Calculate technical indicators
-    indicators = calculate_technical_indicators(data)
-    
-    # Merge data with indicators and remove rows with missing values
-    processed_data = pd.concat([data, indicators], axis=1).dropna()
 
-    # Reset index to maintain sequential ordering after dropping NaNs
-    processed_data.reset_index(inplace=True)
+    n = len(data)
+    train_end = int(n * train_ratio)
+    val_end = train_end + int(n * val_ratio)
 
-    return processed_data
+    train_data = data.iloc[:train_end]
+    val_data = data.iloc[train_end:val_end]
+    test_data = data.iloc[val_end:]
+
+    # Calculate technical indicators using training statistics
+    train_indicators, stats = calculate_technical_indicators(
+        train_data, return_stats=True)
+    val_indicators = calculate_technical_indicators(val_data, stats)
+    test_indicators = calculate_technical_indicators(test_data, stats)
+
+    train_processed = pd.concat([train_data, train_indicators], axis=1)
+    val_processed = pd.concat([val_data, val_indicators], axis=1)
+    test_processed = pd.concat([test_data, test_indicators], axis=1)
+
+    return {
+        'train': train_processed,
+        'val': val_processed,
+        'test': test_processed,
+        'stats': stats,
+    }
