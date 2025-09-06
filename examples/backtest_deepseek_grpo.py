@@ -752,7 +752,8 @@ def save_backtest_results(results, metrics, comparison=None, regime_stats=None, 
 def load_benchmark_data(symbol, start_date, end_date):
     """벤치마크 데이터 로드"""
     try:
-        benchmark_data = process_data(symbol, start_date, end_date)
+        splits = process_data(symbol, start_date, end_date)
+        benchmark_data = pd.concat([splits['train'], splits['val'], splits['test']])
         return benchmark_data
     except Exception as e:
         logger.error(f"벤치마크 데이터 로드 오류: {e}")
@@ -883,7 +884,8 @@ def main():
     all_data = []
     for symbol in args.symbols:
         try:
-            data = process_data(symbol, start_date=args.start_date, end_date=args.end_date)
+            splits = process_data(symbol, start_date=args.start_date, end_date=args.end_date)
+            data = pd.concat([splits['train'], splits['val'], splits['test']])
             all_data.append(data)
         except Exception as e:
             logger.error(f"{symbol} 데이터 로드 오류: {e}")

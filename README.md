@@ -48,8 +48,11 @@ financial-rl-trading/
 ```python
 from src.data.data_processor import process_data
 
-# Download and process stock data (drops missing values and resets index)
-data = process_data('SPY', start_date='2020-01-01')
+try:
+    # Download and process stock data
+    data = process_data('SPY', start_date='2020-01-01')
+except ValueError as e:
+    print(f"Data processing failed: {e}")
 ```
 
 ### Setting Up Trading Environment

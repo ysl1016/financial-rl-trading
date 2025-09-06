@@ -72,7 +72,8 @@ def main():
     asset_data = {}
     for symbol in config['symbols']:
         print(f"  - {symbol} 처리 중...")
-        data = process_data(symbol, start_date=config['start_date'], end_date=config['end_date'])
+        splits = process_data(symbol, start_date=config['start_date'], end_date=config['end_date'])
+        data = pd.concat([splits['train'], splits['val'], splits['test']])
         asset_data[symbol] = data
     
     # 학습/테스트 분할
@@ -491,3 +492,4 @@ def update_from_experiences(agent, experiences, weights=None):
 
 if __name__ == "__main__":
     main()
+
