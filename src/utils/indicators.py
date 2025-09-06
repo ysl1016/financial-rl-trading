@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-def calculate_technical_indicators(data):
+def calculate_technical_indicators(data, stats=None, return_stats=False):
     """
     Calculate various technical indicators for the given price data
     
@@ -10,6 +10,11 @@ def calculate_technical_indicators(data):
         
     Returns:
         pd.DataFrame: DataFrame with technical indicators
+        dict (optional): Dictionary of normalization statistics when
+            ``return_stats`` is True. The dictionary maps column names to
+            ``{"mean": value, "std": value}`` pairs and can be reused to
+            normalize other datasets (e.g., validation and test sets) using
+            the same training-period statistics.
     """
     df = pd.DataFrame(index=data.index)
     
@@ -73,9 +78,17 @@ def calculate_technical_indicators(data):
     # Normalize indicators (Z-score)
     normalize_cols = ['RSI', 'ForceIndex2', '%K', '%D', 'MACD', 'MACDSignal',
                      'BBWidth', 'ATR', 'VPT', 'VPT_MA', 'OBV', 'ROC']
+    stats = {} if stats is None else stats
     for col in normalize_cols:
-        mean = df[col].mean()
-        std = df[col].std()
+        if col in stats:
+            mean = stats[col]['mean']
+            std = stats[col]['std']
+        else:
+            mean = df[col].mean()
+            std = df[col].std()
+            stats[col] = {'mean': mean, 'std': std}
         df[f'{col}_norm'] = (df[col] - mean) / (std + 1e-9)
-    
+
+    if return_stats:
+        return df, stats
     return df

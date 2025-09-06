@@ -1094,28 +1094,19 @@ The data processing pipeline is responsible for collecting, preprocessing, and c
 ### 7.2 Single Asset Data Processing
 
 ```python
-def process_data(symbol, start_date=None, end_date=None):
+def process_data(symbol, start_date=None, end_date=None,
+                 train_ratio=0.7, val_ratio=0.15):
     """
-    Download and process single asset data
-    
-    Args:
-        symbol (str): Asset symbol
-        start_date (str, optional): Start date (YYYY-MM-DD format)
-        end_date (str, optional): End date (YYYY-MM-DD format)
-        
-    Returns:
-        pd.DataFrame: Processed data
+    Download and process single asset data and return train/validation/test
+    splits normalised using training statistics.
     """
-    # Download data
-    data = download_stock_data(symbol, start_date, end_date)
-    
-    # Calculate technical indicators
-    indicators = calculate_technical_indicators(data)
-    
-    # Merge data
-    processed_data = pd.concat([data, indicators], axis=1)
-    
-    return processed_data
+    # ... implementation ...
+    return {
+        'train': train_df,
+        'val': val_df,
+        'test': test_df,
+        'stats': stats,
+    }
 ```
 
 ### 7.3 Multi-Asset Data Processing
@@ -1135,10 +1126,11 @@ def process_multi_assets(symbols, start_date=None, end_date=None, include_correl
         dict: Processed multi-asset data
     """
     asset_data = {}
-    
+
     # Process each asset
     for symbol in symbols:
-        asset_data[symbol] = process_data(symbol, start_date, end_date)
+        splits = process_data(symbol, start_date, end_date)
+        asset_data[symbol] = splits['train']
     
     # Align date indices
     common_dates = set.intersection(*[set(data.index) for data in asset_data.values()])

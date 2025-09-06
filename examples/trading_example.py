@@ -9,7 +9,8 @@ import numpy as np
 
 def main():
     # Download and process data
-    data = process_data('SPY', start_date='2020-01-01')
+    data_splits = process_data('SPY', start_date='2020-01-01')
+    data = data_splits['train']
     
     # Create environment
     env = TradingEnv(
