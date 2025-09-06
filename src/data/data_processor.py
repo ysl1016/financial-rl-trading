@@ -66,4 +66,8 @@ def process_data(symbol, start_date=None, end_date=None,
     # Merge data with indicators
     processed_data = pd.concat([data, indicators], axis=1)
     
+    # Clean data: remove NaNs introduced by indicators and ensure sequential index
+    processed_data.dropna(inplace=True)
+    processed_data.reset_index(inplace=True)
+    
     return processed_data
