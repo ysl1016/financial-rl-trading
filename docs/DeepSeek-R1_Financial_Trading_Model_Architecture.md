@@ -1114,7 +1114,7 @@ def process_data(symbol, start_date=None, end_date=None):
     
     # Merge data and remove rows with missing values
     processed_data = pd.concat([data, indicators], axis=1).dropna()
-    processed_data.reset_index(inplace=True)
+    # Keep DatetimeIndex to preserve date alignment across assets
 
     return processed_data
 ```
@@ -1139,7 +1139,7 @@ def process_multi_assets(symbols, start_date=None, end_date=None, include_correl
     
     # Process each asset
     for symbol in symbols:
-        asset_data[symbol] = process_data(symbol, start_date, end_date)  # drops NaNs and resets index
+        asset_data[symbol] = process_data(symbol, start_date, end_date)  # drops NaNs, preserves DatetimeIndex
     
     # Align date indices
     common_dates = set.intersection(*[set(data.index) for data in asset_data.values()])
