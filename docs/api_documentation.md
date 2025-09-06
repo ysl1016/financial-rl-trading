@@ -44,7 +44,7 @@ from src.data.data_processor import download_stock_data, process_data
 # Download single asset data
 data = download_stock_data(symbol="SPY", start_date="2020-01-01", end_date="2022-12-31")
 
-# Process data and calculate technical indicators
+# Process data and calculate technical indicators (drops missing values and resets index)
 processed_data = process_data(symbol="SPY", start_date="2020-01-01", end_date="2022-12-31")
 ```
 
@@ -57,7 +57,7 @@ processed_data = process_data(symbol="SPY", start_date="2020-01-01", end_date="2
 #### Return Values
 
 - `download_stock_data`: pandas DataFrame with OHLCV data
-- `process_data`: processed pandas DataFrame with added technical indicators
+- `process_data`: processed pandas DataFrame with added technical indicators; rows with missing values removed and index reset
 
 ### 3.2 Multi-Asset Data Processing
 
@@ -342,7 +342,7 @@ from src.data.data_processor import process_data
 from src.models.trading_env import TradingEnv
 from src.models.grpo_agent import GRPOAgent
 
-# Process data
+# Process data (missing values removed and index reset)
 data = process_data('SPY', start_date='2020-01-01', end_date='2022-01-01')
 
 # Split train/test data

@@ -48,7 +48,7 @@ financial-rl-trading/
 ```python
 from src.data.data_processor import process_data
 
-# Download and process stock data
+# Download and process stock data (drops missing values and resets index)
 data = process_data('SPY', start_date='2020-01-01')
 ```
 
