@@ -10,9 +10,10 @@ from unittest.mock import MagicMock
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.models.deepseek_grpo_agent import (
-    DeepSeekGRPOAgent, TemporalEncoder, FeatureAttention,
+    DeepSeekGRPOAgent, TemporalEncoder, FeatureAttentionModule as FeatureAttention,
     DeepSeekPolicyNetwork, DistributionalValueNetwork, MetaController
 )
+from src.models.grpo_agent import GRPOAgent
 
 class TestDeepSeekGRPOAgent(unittest.TestCase):
     """DeepSeekGRPOAgent 및 관련 컴포넌트에 대한 테스트"""
@@ -446,11 +447,47 @@ class TestDeepSeekGRPOAgent(unittest.TestCase):
         
         # 특성 중요도 추출
         importance_weights = agent.get_feature_importance(state, history)
-        
+
         # 결과 확인
         self.assertEqual(importance_weights.shape, (1, self.state_dim))
         self.assertTrue(np.all(importance_weights >= 0))
         self.assertTrue(np.all(importance_weights <= 1))
+
+
+class TestGRPOAgentEdgeCases(unittest.TestCase):
+    """GRPOAgent edge case tests for reward/penalty loss"""
+
+    def setUp(self):
+        self.state_dim = 4
+        self.action_dim = 2
+        self.agent = GRPOAgent(state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=8, device='cpu')
+
+        def mock_forward(x):
+            return torch.ones(x.size(0), self.agent.action_dim, device='cpu', requires_grad=True) / self.agent.action_dim
+
+        def mock_q(state, action_onehot):
+            return torch.zeros(state.size(0), 1, device='cpu', requires_grad=True)
+
+        self.agent.network.forward = MagicMock(side_effect=mock_forward)
+        self.agent.network.estimate_q_value = MagicMock(side_effect=mock_q)
+
+    def _populate(self, reward):
+        for _ in range(4):
+            state = np.zeros(self.state_dim)
+            next_state = np.zeros(self.state_dim)
+            self.agent.store_transition(state, 0, reward, next_state, False)
+
+    def test_update_all_positive_advantages(self):
+        self._populate(1.0)
+        metrics = self.agent.update()
+        self.assertIn('policy_loss', metrics)
+        self.assertFalse(np.isnan(metrics['policy_loss']))
+
+    def test_update_all_negative_advantages(self):
+        self._populate(-1.0)
+        metrics = self.agent.update()
+        self.assertIn('policy_loss', metrics)
+        self.assertFalse(np.isnan(metrics['policy_loss']))
 
 
 if __name__ == '__main__':
