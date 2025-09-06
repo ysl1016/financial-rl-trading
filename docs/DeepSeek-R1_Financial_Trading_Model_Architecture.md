@@ -1100,13 +1100,15 @@ def process_data(symbol, start_date=None, end_date=None,
     Download and process single asset data and return train/validation/test
     splits normalised using training statistics.
     """
-    # ... implementation ...
-    return {
-        'train': train_df,
-        'val': val_df,
-        'test': test_df,
-        'stats': stats,
-    }
+    # Download data
+    data = download_stock_data(symbol, start_date, end_date)
+    
+    # Calculate technical indicators
+    indicators = calculate_technical_indicators(data)
+    
+    # Merge data and remove rows with missing values
+    processed_data = pd.concat([data, indicators], axis=1).dropna()
+    # Keep DatetimeIndex to preserve date alignment across assets
 
 ```
 
@@ -1130,8 +1132,7 @@ def process_multi_assets(symbols, start_date=None, end_date=None, include_correl
 
     # Process each asset
     for symbol in symbols:
-        splits = process_data(symbol, start_date, end_date)
-        asset_data[symbol] = splits['train']
+        asset_data[symbol] = process_data(symbol, start_date, end_date)  # drops NaNs, preserves DatetimeIndex
     
     # Align date indices
     common_dates = set.intersection(*[set(data.index) for data in asset_data.values()])
