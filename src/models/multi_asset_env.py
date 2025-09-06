@@ -441,8 +441,8 @@ if __name__ == "__main__":
     asset_data = {}
     
     for symbol in symbols:
-        data = dp.process_data(symbol, start_date='2020-01-01', end_date='2021-01-01')
-        asset_data[symbol] = data
+        data_splits = dp.process_data(symbol, start_date='2020-01-01', end_date='2021-01-01')
+        asset_data[symbol] = data_splits['train']
     
     # 다중 자산 트레이딩 환경 생성
     env = MultiAssetTradingEnv(

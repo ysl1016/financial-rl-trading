@@ -35,15 +35,22 @@ def download_stock_data(symbol, start_date=None, end_date=None):
     logger.info("다운로드 완료: %d 데이터 포인트", len(data))
     return data
 
-def process_data(symbol, start_date=None, end_date=None):
+def process_data(symbol, start_date=None, end_date=None,
+                 train_ratio=0.7, val_ratio=0.15):
     """
-    Download and process stock data
-    
+    Download stock data, calculate technical indicators, and split into
+    train/validation/test sets. Normalization statistics are computed from
+    the training period and reused for validation and test periods.
+
     Args:
         symbol (str): Stock symbol
         start_date (str, optional): Start date in YYYY-MM-DD format
         end_date (str, optional): End date in YYYY-MM-DD format
-        
+        train_ratio (float, optional): Proportion of data used for training.
+            Defaults to 0.7.
+        val_ratio (float, optional): Proportion of data used for validation.
+            Defaults to 0.15. The remainder is used for testing.
+
     Returns:
         pd.DataFrame: Processed DataFrame with technical indicators
 
