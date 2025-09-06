@@ -59,9 +59,9 @@ def process_data(symbol, start_date=None, end_date=None,
     val_indicators = calculate_technical_indicators(val_data, stats)
     test_indicators = calculate_technical_indicators(test_data, stats)
 
-    train_processed = pd.concat([train_data, train_indicators], axis=1)
-    val_processed = pd.concat([val_data, val_indicators], axis=1)
-    test_processed = pd.concat([test_data, test_indicators], axis=1)
+    train_processed = pd.concat([train_data, train_indicators], axis=1).dropna().reset_index(drop=True)
+    val_processed = pd.concat([val_data, val_indicators], axis=1).dropna().reset_index(drop=True)
+    test_processed = pd.concat([test_data, test_indicators], axis=1).dropna().reset_index(drop=True)
 
     return {
         'train': train_processed,
