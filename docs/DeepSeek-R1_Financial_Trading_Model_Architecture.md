@@ -1107,6 +1107,7 @@ def process_data(symbol, start_date=None, end_date=None,
         'test': test_df,
         'stats': stats,
     }
+
 ```
 
 ### 7.3 Multi-Asset Data Processing

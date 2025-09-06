@@ -13,8 +13,12 @@ class TradingEnv(gym.Env):
         self.data = data.reset_index(drop=True)
         self.n_steps = len(data)
         
-        # State space: technical indicators + position info + return info
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(14,), dtype=np.float32)
+        # Determine available feature columns dynamically
+        self.feature_columns = [col for col in self.data.columns if col.endswith('_norm')]
+
+        # Observation space: all features + position info + return info
+        obs_dim = len(self.feature_columns) + 2  # position and portfolio return
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32)
         
         # Action space: 0=hold, 1=buy, 2=sell
         self.action_space = spaces.Discrete(3)
@@ -46,29 +50,15 @@ class TradingEnv(gym.Env):
     def _get_observation(self):
         """Get current state observation"""
         row = self.data.loc[self.index]
-        
+
         # Calculate portfolio return
         portfolio_return = 0.0
         if len(self.portfolio_values) > 1:
             portfolio_return = (self.portfolio_values[-1] / self.portfolio_values[-2]) - 1
-        
-        obs = np.array([
-            float(row['RSI_norm']),
-            float(row['ForceIndex2_norm']),
-            float(row['%K_norm']),
-            float(row['%D_norm']),
-            float(row['MACD_norm']),
-            float(row['MACDSignal_norm']),
-            float(row['BBWidth_norm']),
-            float(row['ATR_norm']),
-            float(row['VPT_norm']),
-            float(row['VPT_MA_norm']),
-            float(row['OBV_norm']),
-            float(row['ROC_norm']),
-            float(self.position),
-            float(portfolio_return)
-        ], dtype=np.float32)
-        
+
+        features = [float(row[col]) for col in self.feature_columns]
+        obs = np.array(features + [float(self.position), float(portfolio_return)], dtype=np.float32)
+
         return obs
     
     def _calculate_reward(self, old_value, new_value, action):

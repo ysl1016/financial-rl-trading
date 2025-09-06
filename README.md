@@ -51,6 +51,7 @@ from src.data.data_processor import process_data
 # Download and process stock data
 data_splits = process_data('SPY', start_date='2020-01-01')
 data = data_splits['train']
+
 ```
 
 ### Setting Up Trading Environment

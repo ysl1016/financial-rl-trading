@@ -42,6 +42,7 @@ def main(args):
     data_splits = process_data(args.symbol, start_date=args.start_date, end_date=args.end_date)
     data = pd.concat([data_splits['train'], data_splits['val'], data_splits['test']])
     print(f"처리된 데이터 크기: {len(data)} 행")
+
     
     # 데이터 저장 (선택적)
     if args.save_data:
